@@ -1,0 +1,250 @@
+// 六级复习工具专用 schema —— 独立的 SQLite 库，与旧的小学背单词应用（PostgreSQL）互不干扰。
+//
+// 常用命令：
+//   pnpm db:cet6:push    建表 / 同步结构
+//   pnpm db:cet6:seed    灌入词库 + 真题 + 写作模板
+//   pnpm db:cet6:studio  可视化查看
+//
+// 注意：SQLite 不支持 Prisma 的 Json 类型，所有数组/对象字段都以 TEXT 存 JSON 字符串，
+//       读写统一走 src/lib/cet6/json.ts 里的封装，避免各处手写 JSON.parse。
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../src/generated/cet6"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("CET6_DATABASE_URL")
+}
+
+// ==================== 词库 ====================
+
+model Word {
+  id       String  @id @default(cuid())
+  text     String  @unique
+  rank     Int // 学习序号（按真题出现频次降序重排过）
+  freq     Int     @default(0) // 真题例句条数
+  ukPhone  String?
+  usPhone  String?
+  trans    String // [{pos, cn}]
+  defEn    String?
+  phrases  String // [{en, cn}]
+  sents    String // [{en, cn}] 中英对照例句
+  exam     String // [{en, y, p, t}] 真题例句
+  synos    String // [{pos, cn, words[]}]
+  relWords String // [{pos, w, cn}]
+  mnemonic String?
+
+  progress  WordProgress?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([rank])
+  @@index([freq])
+}
+
+/// 复习排程（简化版 SM-2 / 艾宾浩斯）
+model WordProgress {
+  id         String    @id @default(cuid())
+  wordId     String    @unique
+  word       Word      @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  stage      Int       @default(0) // 间隔阶梯下标 0..8
+  ease       Float     @default(2.5) // 难度因子
+  dueAt      DateTime  @default(now()) // 下次到期时间
+  reps       Int       @default(0) // 累计复习次数
+  lapses     Int       @default(0) // 遗忘次数
+  lastResult String? // again | hard | good | easy
+  recallLv   Int       @default(0) // 中→英 回忆掌握度 0..5
+  spellLv    Int       @default(0) // 听音拼写掌握度 0..5
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([dueAt])
+  @@index([stage])
+}
+
+// ==================== 错题本 / 生词本 ====================
+
+model NotebookItem {
+  id        String    @id @default(cuid())
+  kind      String // word | mistake | sentence | phrase
+  source    String    @default("手工") // 词汇 | 阅读 | 听力 | 翻译 | 写作 | 真题 | 每日精读 | 手工
+  title     String
+  content   String
+  answer    String?
+  myAnswer  String?
+  note      String?
+  tags      String    @default("") // 逗号分隔
+  refId     String? // 关联 Word/Paper 的 id
+  stage     Int       @default(0)
+  dueAt     DateTime?
+  reps      Int       @default(0)
+  lapses    Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([kind])
+  @@index([dueAt])
+}
+
+// ==================== 番茄钟 / 打卡 ====================
+
+model StudySession {
+  id        String    @id @default(cuid())
+  kind      String // vocab | spelling | listening | reading | writing | translation | daily
+  minutes   Int
+  pomodoros Int       @default(1)
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+  note      String?
+  createdAt DateTime  @default(now())
+
+  @@index([startedAt])
+  @@index([kind])
+}
+
+model DailyStat {
+  date      String   @id // YYYY-MM-DD（本地日期）
+  minutes   Int      @default(0)
+  newWords  Int      @default(0)
+  reviews   Int      @default(0)
+  correct   Int      @default(0)
+  wrong     Int      @default(0)
+  pomodoros Int      @default(0)
+  streak    Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+// ==================== 听力精听 ====================
+
+model ListeningDrill {
+  id         String    @id @default(cuid())
+  title      String
+  source     String    @default("手工") // 真题 | 每日精读 | 自建
+  refId      String?
+  audioPath  String?
+  sentences  String // [{en, cn, audio?}]
+  dictation  String? // [{n, input, correct, accuracy}]
+  accuracy   Float?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([createdAt])
+}
+
+// ==================== 写作 / 翻译模板 ====================
+
+model WritingTemplate {
+  id       String  @id @default(cuid())
+  category String // 议论文 | 图表 | 应用文 | 书信 | 翻译技巧 | 万能句式
+  title    String
+  summary  String  @default("")
+  body     String // 模板正文，{占位符} 用花括号
+  phrases  String  @default("[]") // [{en, cn}]
+  starred  Boolean @default(false)
+  sort     Int     @default(0)
+
+  @@index([category])
+}
+
+// ==================== 真题 ====================
+
+model Paper {
+  id       String  @id @default(cuid())
+  slug     String  @unique // 2019.06_第1套
+  year     Int
+  month    Int
+  set      String
+  label    String   @default("") // 2021年6月
+  writing  String? // 作文题干
+  writingModel String? // 范文
+  writingModelZh String? // 范文里给的中文说明/大纲
+  translation String? // 翻译中文原文
+  translationReference String? // 参考译文
+  subjective String @default("{}") // 主观题完整解析（含逐句 trunk/downgrade/grammar）
+  passages   String @default("{}") // 各板块短文 {cloze, matching, reading-1, reading-2}
+  questions  String @default("[]") // 客观题数组（题干 + 选项 + 答案 + 中文解析）
+  byPart     String @default("{}") // {listening: 25, cloze: 10, ...}
+  questionCount Int  @default(0)
+  audioUrl   String? // 直链 MP3（2023–2025 那批）
+  audioHls   String? // m3u8 地址（2020–2022，本地用 ffmpeg 转码）
+  audioPieces String @default("[]") // [{label, start, end}] 各部分在音频里的时间区间
+  /// 第一次播放这套听力音频的时间（列表里标"已听过"）
+  listenedAt DateTime?
+  source   String  @default("")
+  createdAt DateTime @default(now())
+
+  attempts PaperAttempt[]
+
+  @@index([year, month])
+}
+
+/// 真题练习记录（含错题）
+model PaperAttempt {
+  id         String    @id @default(cuid())
+  paperId    String
+  paper      Paper     @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  section    String // listening | cloze | matching | reading
+  total      Int
+  correct    Int
+  detail     String    @default("[]") // [{n, my, answer, right}]
+  minutes    Int       @default(0)
+  createdAt  DateTime  @default(now())
+
+  @@index([paperId])
+  @@index([createdAt])
+}
+
+// ==================== 每日内容 ====================
+
+model DailyArticle {
+  id         String    @id @default(cuid())
+  date       String    @unique // YYYY-MM-DD
+  title      String
+  sourceUrl  String    @default("")
+  paragraphs String // [{en, cn}]
+  audioPath  String?
+  vocab      String    @default("[]") // [{w, cn, pos, freq}]
+  quiz       String    @default("[]") // [{q, options[], answer, explain}]
+  translation String   @default("") // 用于翻译练习的中文段落
+  generatedBy String   @default("local") // local | llm:<model>
+  createdAt  DateTime  @default(now())
+
+  @@index([date])
+}
+
+// ==================== 每日听力素材 ====================
+
+/// 每日听力：来自 BBC 6 Minute English / VOA Learning English 这类
+/// 「真人朗读 + 有原文」的节目。和 2020–2026 真题听力互补 ——
+/// 真题听力有音频没原文，这里两者都有，适合逐句精听跟读。
+/// 抓取需要梯子（这些站在墙外），所以设计上允许为空：抓不到就不显示，不影响其他模块。
+model ListeningItem {
+  id          String    @id @default(cuid())
+  source      String // "BBC 6 Minute English" / "VOA Learning English"
+  externalId  String // 源站稳定标识（RSS guid），用于去重
+  title       String
+  pageUrl     String
+  audioUrl    String // 真实音频直链（MP3）
+  transcript  String    @default("[]") // [{en}] 逐句原文
+  summary     String    @default("")
+  level       String    @default("") // 难度标注（VOA 有 Beginning/Intermediate 之类）
+  publishedAt DateTime?
+  durationSec Int?
+  fetchedAt   DateTime  @default(now())
+  /// 第一次真正听过的时间（用来在列表里标"已听过"并排到后面）
+  listenedAt  DateTime?
+
+  @@unique([source, externalId])
+  @@index([publishedAt])
+  @@index([source])
+}
+
+// ==================== 设置 ====================
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

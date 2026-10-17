@@ -1,0 +1,43 @@
+{
+  "name": "spellmaster",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "db:cet6:push": "prisma db push --schema prisma/cet6/schema.prisma",
+    "db:cet6:generate": "prisma generate --schema prisma/cet6/schema.prisma",
+    "db:cet6:seed": "tsx prisma/cet6/seed.ts",
+    "db:cet6:studio": "prisma studio --schema prisma/cet6/schema.prisma",
+    "data:words": "node cet6-data/build-words.mjs",
+    "data:papers": "node cet6-data/fetch-papers.mjs",
+    "db:cet6:smoke": "tsx scripts/cet6-smoke.ts",
+    "data:quiz": "node cet6-data/fetch-exam-quiz.mjs"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^3.0.3",
+    "date-fns": "^4.4.0",
+    "jsonwebtoken": "^9.0.3",
+    "next": "16.2.10",
+    "next-auth": "^4.24.14",
+    "prisma": "^5.22.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/bcryptjs": "^3.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.10",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.1",
+    "typescript": "^5"
+  }
+}
