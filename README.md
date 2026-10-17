@@ -3,6 +3,7 @@
 > **📌 版本说明**
 > 本仓库是**当前版本**（`v0.2-cet6`）：在 K12 原版之上，新增了 **CET6 复习台**（`/cet6` 路由段 + 独立数据层）。
 > CET6 改造**之前**的 K12 原版快照在 **[spellmaster-k12](https://github.com/lujun2016/spellmaster-k12)**（tag `v0.1-k12`），用于对照与回滚。
+> 仓库、tag、Release 与日常操作说明见 [GITHUB.md](./GITHUB.md)。
 
 ---
 
