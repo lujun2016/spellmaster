@@ -64,3 +64,6 @@ cet6-data/
 node_modules/
 .next/
 tsconfig.tsbuildinfo
+
+# Prisma 生成的客户端与平台二进制（可 regenerate）
+/src/generated/
