@@ -16,6 +16,8 @@ import { setSetting } from "@/lib/cet6/service"
 /** 允许从设置页写入的键（其余一律拒绝） */
 const ALLOWED_KEYS = new Set([
   "examDate",
+  "regStartDate",
+  "regEndDate",
   "dailyNewWords",
   "dailyMaxReviews",
   "autoPlan",

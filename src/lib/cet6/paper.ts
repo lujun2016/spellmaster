@@ -98,6 +98,61 @@ export type PaperListItem = {
   hasAudio: boolean
   passagesDone: number
   attempt: AttemptSummary | null
+  /** 已作答客观题的完成度（0-100） */
+  percent: number
+  /** 完成度 100% 时显示原始得分，如 "48/55"；否则 null */
+  score: string | null
+}
+
+/**
+ * 每套真题的完成度：已作答的客观题题号（按 detail 去重）/ 总题数，
+ * 以及各板块「最近一次」的得分汇总（用于 100% 时显示 48/55）。
+ * detail 里的 n 是题号，同一题多次作答只算一次，所以重做不会把完成度刷过 100%。
+ */
+export async function getPaperProgress(): Promise<Map<string, { answered: number; correct: number; total: number }>> {
+  const rows = await db.paperAttempt.findMany({
+    select: { paperId: true, section: true, correct: true, total: true, detail: true, createdAt: true },
+    orderBy: { createdAt: "asc" },
+  })
+  const answered = new Map<string, Set<number>>()
+  const latest = new Map<string, Map<string, { correct: number; total: number; at: Date }>>()
+
+  for (const r of rows) {
+    let set = answered.get(r.paperId)
+    if (!set) {
+      set = new Set<number>()
+      answered.set(r.paperId, set)
+    }
+    try {
+      const detail = JSON.parse(r.detail || "[]") as Array<{ n?: number }>
+      for (const d of detail) if (typeof d.n === "number") set.add(d.n)
+    } catch {
+      // 坏数据就当没答过，不影响其他套
+    }
+
+    let per = latest.get(r.paperId)
+    if (!per) {
+      per = new Map()
+      latest.set(r.paperId, per)
+    }
+    const cur = per.get(r.section)
+    if (!cur || new Date(r.createdAt).getTime() >= cur.at.getTime()) {
+      per.set(r.section, { correct: r.correct, total: r.total, at: new Date(r.createdAt) })
+    }
+  }
+
+  const out = new Map<string, { answered: number; correct: number; total: number }>()
+  for (const [paperId, set] of answered) {
+    const per = latest.get(paperId)
+    let correct = 0
+    let total = 0
+    if (per) for (const v of per.values()) {
+      correct += v.correct
+      total += v.total
+    }
+    out.set(paperId, { answered: set.size, correct, total })
+  }
+  return out
 }
 
 /** 一次把所有练习记录聚合成「每套的最好 / 最近成绩」，避免列表页 N+1 */
@@ -142,7 +197,7 @@ export async function getAttemptSummaries(): Promise<Map<string, AttemptSummary>
  * 早期 seed 留下的 . 分隔占位记录（2024.06_第1套 之类），它们没有任何题目。
  */
 export async function getPaperList(): Promise<{ papers: PaperListItem[]; emptyCount: number }> {
-  const [rows, summaries] = await Promise.all([
+  const [rows, summaries, progress] = await Promise.all([
     db.paper.findMany({
       where: { questionCount: { gt: 0 } },
       orderBy: [{ year: "desc" }, { month: "desc" }, { slug: "asc" }],
@@ -160,6 +215,7 @@ export async function getPaperList(): Promise<{ papers: PaperListItem[]; emptyCo
       },
     }),
     getAttemptSummaries(),
+    getPaperProgress(),
   ])
   const emptyCount = await db.paper.count({ where: { questionCount: 0 } })
 
@@ -173,6 +229,14 @@ export async function getPaperList(): Promise<{ papers: PaperListItem[]; emptyCo
     byPart: readByPart(r.byPart),
     hasAudio: Boolean(r.audioUrl || r.audioHls),
     passagesDone: 0,
+    ...(() => {
+      const prog = progress.get(r.id)
+      const percent = prog ? Math.min(100, Math.round((prog.answered / Math.max(1, r.questionCount)) * 100)) : 0
+      return {
+        percent,
+        score: percent >= 100 && prog && prog.total > 0 ? `${prog.correct}/${prog.total}` : null,
+      }
+    })(),
     attempt: summaries.get(r.id) ?? null,
   }))
   return { papers, emptyCount }

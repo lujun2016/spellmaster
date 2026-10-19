@@ -161,11 +161,17 @@ export function SpellSession({ words }: Props) {
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault()
-                if (checked) submit(correct ? "good" : "again")
-                else check()
+                if (checked) {
+                  // 拼对：回车进下一词；拼错：回车只是重新判定（下面仍可继续改）
+                  if (correct) submit("good")
+                  return
+                }
+                const isRight = input.trim().toLowerCase() === word.text.toLowerCase()
+                setChecked(true)
+                if (isRight) setTimeout(() => submit("good"), 350)
               }
             }}
-            disabled={checked || pending}
+            disabled={(checked && correct) || pending}
             spellCheck={false}
             autoComplete="off"
             autoCapitalize="off"
@@ -225,21 +231,33 @@ export function SpellSession({ words }: Props) {
         >
           提交（回车）
         </button>
+      ) : correct ? (
+        <button
+          onClick={() => submit("good")}
+          className="w-full rounded-lg bg-indigo-600 px-4 py-3 text-sm font-medium text-white hover:bg-indigo-700"
+        >
+          下一个（回车）
+        </button>
       ) : (
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={() => submit(correct ? "good" : "again")}
-            className="rounded-lg bg-indigo-600 px-4 py-3 text-sm font-medium text-white hover:bg-indigo-700"
-          >
-            下一个（回车）
-          </button>
-          <button
-            onClick={() => submit("hard")}
-            className="rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50"
-            title="拼错了但其实想起来了，标记为「模糊」"
-          >
-            标记模糊
-          </button>
+        <div>
+          <p className="mb-2 text-center text-[11px] text-slate-400">
+            上面输入框还能改，直接重新输入，拼对了按回车就过；实在想不起来再跳过。
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => submit("again")}
+              className="rounded-lg bg-slate-900 px-4 py-3 text-sm font-medium text-white hover:bg-slate-700"
+            >
+              跳过（记为不会）
+            </button>
+            <button
+              onClick={() => submit("hard")}
+              className="rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50"
+              title="拼错了但其实想起来了，标记为「模糊」"
+            >
+              标记模糊
+            </button>
+          </div>
         </div>
       )}
     </div>

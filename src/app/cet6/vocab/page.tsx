@@ -18,8 +18,9 @@ export default async function VocabPage() {
         <div>
           <h1 className="text-xl font-semibold text-slate-900">词汇复习</h1>
           <p className="mt-0.5 text-sm text-slate-500">
-            本轮 {words.length} 张：复习 {queue.due.length} · 新词 {queue.fresh.length}
-            {queue.totalDue > words.length && `（还有 ${queue.totalDue - queue.due.length} 个到期词，本轮先做这些）`}
+            {queue.newPaused
+              ? `今天 ${words.length} 张 · 共欠 ${queue.totalDue} 个（剩余 ${queue.totalDue - queue.due.length} 分摊到之后几天）`
+              : `今天 ${words.length} 张：复习 ${queue.due.length} · 新词 ${queue.fresh.length}`}
           </p>
         </div>
         <div className="flex gap-2 text-sm">

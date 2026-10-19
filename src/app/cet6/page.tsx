@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Pomodoro } from "@/components/cet6/Pomodoro"
-import { effectiveDailyNew, getDashboardStats, getSettings, localDateKey } from "@/lib/cet6/service"
+import { daysUntil, effectiveDailyNew, getDashboardStats, getSettings, localDateKey } from "@/lib/cet6/service"
 
 export const dynamic = "force-dynamic"
 
@@ -97,6 +97,22 @@ export default async function Cet6Dashboard() {
   const todayTotal = stats.todayNew + stats.todayReviews
   const todayAccuracy = todayTotal ? Math.round((stats.todayCorrect / todayTotal) * 100) : 0
 
+  // 报名三态：未开始 → 进行中 → 已结束（已结束不显示，避免首页堆没用的倒计时）
+  const now = new Date()
+  const regStart = settings.regStartDate ? new Date(`${settings.regStartDate}T00:00:00`) : null
+  const regEnd = settings.regEndDate ? new Date(`${settings.regEndDate}T23:59:59`) : null
+  const reg =
+    !regStart && !regEnd
+      ? null
+      : regStart && now < regStart
+        ? { text: `距报名开始 ${daysUntil(settings.regStartDate)} 天`, tone: "text-slate-500" }
+        : regEnd && now > regEnd
+          ? null
+          : {
+              text: regEnd ? `报名中 · 还有 ${daysUntil(settings.regEndDate)} 天截止` : "报名中",
+              tone: "text-amber-700",
+            }
+
   return (
     <div className="space-y-5">
       {/* 顶部：倒计时 + 今日概览 */}
@@ -107,8 +123,13 @@ export default async function Cet6Dashboard() {
               {settings.examDate} 考试 · 还剩{" "}
               <b className={stats.daysLeft <= 30 ? "text-rose-600" : "text-slate-900"}>{stats.daysLeft}</b> 天
             </div>
+            {reg && <div className={`mt-1 text-sm font-medium ${reg.tone}`}>{reg.text}</div>}
             <h1 className="mt-1 text-2xl font-semibold text-slate-900">
-              今天 {stats.totalDue > 0 ? `有 ${stats.totalDue} 个词要复习` : "复习任务已清空"}
+              {backlog
+                ? `共欠 ${stats.totalDue} 个，今天先清 ${catchUp}`
+                : stats.totalDue > 0
+                  ? `今天有 ${stats.totalDue} 个词要复习`
+                  : "复习任务已清空"}
             </h1>
             <p className="mt-1 text-sm text-slate-500">
               连续打卡 {stats.streak} 天 · 已学 {stats.learnedWords}/{stats.totalWords} 词 · 掌握 {stats.masteredWords} 词
@@ -148,60 +169,6 @@ export default async function Cet6Dashboard() {
 
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
-          {/* 今日任务清单 */}
-          <section className="rounded-xl border border-slate-200 bg-white p-5">
-            <h2 className="mb-3 text-sm font-semibold text-slate-900">今日任务</h2>
-            <ul className="space-y-2 text-sm">
-              <li className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
-                <span className="text-slate-700">
-                  复习已到期词汇
-                  <span className="ml-2 text-xs text-slate-400">忘得越快，出现得越勤</span>
-                </span>
-                <span className="flex items-center gap-3">
-                  <b className="tabular-nums text-slate-900">{stats.totalDue}</b>
-                  <Link href="/cet6/vocab" className="text-xs text-indigo-600 hover:underline">
-                    去做
-                  </Link>
-                </span>
-              </li>
-              <li className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
-                <span className="text-slate-700">
-                  学新词
-                  <span className="ml-2 text-xs text-slate-400">{daily.note}</span>
-                </span>
-                <span className="flex items-center gap-3">
-                  <b className="tabular-nums text-slate-900">{Math.min(daily.value, stats.totalNew)}</b>
-                  <Link href="/cet6/vocab" className="text-xs text-indigo-600 hover:underline">
-                    去做
-                  </Link>
-                </span>
-              </li>
-              <li className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
-                <span className="text-slate-700">
-                  每日精读一篇
-                  <span className="ml-2 text-xs text-slate-400">中国日报双语文章 · 生词 · 理解题</span>
-                </span>
-                <Link href="/cet6/daily" className="text-xs text-indigo-600 hover:underline">
-                  去做
-                </Link>
-              </li>
-              <li className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
-                <span className="text-slate-700">
-                  真题 / 听力
-                  <span className="ml-2 text-xs text-slate-400">共 {stats.dueSoon} 个词将在 24 小时内到期</span>
-                </span>
-                <span className="flex gap-3">
-                  <Link href="/cet6/papers" className="text-xs text-indigo-600 hover:underline">
-                    真题
-                  </Link>
-                  <Link href="/cet6/listening" className="text-xs text-indigo-600 hover:underline">
-                    听力
-                  </Link>
-                </span>
-              </li>
-            </ul>
-          </section>
-
           <Heatmap recent={stats.recent} />
 
           {/* 词汇进度条 */}
@@ -238,31 +205,7 @@ export default async function Cet6Dashboard() {
         </div>
 
         <div className="space-y-5">
-          <Pomodoro />
-          <section className="rounded-xl border border-slate-200 bg-white p-5">
-            <h3 className="mb-3 text-sm font-semibold text-slate-900">快捷入口</h3>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              {[
-                { href: "/cet6/daily", label: "每日精读" },
-                { href: "/cet6/listening", label: "听力精听" },
-                { href: "/cet6/papers", label: "真题练习" },
-                { href: "/cet6/translation", label: "翻译练习" },
-                { href: "/cet6/writing", label: "写作模板" },
-                { href: "/cet6/notebook", label: "错题本" },
-                { href: "/cet6/vocab/list", label: "全词库" },
-                { href: "/cet6/stats", label: "统计" },
-              ].map((l) => (
-                <Link
-                  key={l.href}
-                  href={l.href}
-                  className="rounded-lg border border-slate-200 px-3 py-2 text-center text-slate-600 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
-                >
-                  {l.label}
-                </Link>
-              ))}
-            </div>
-          </section>
-        </div>
+          <Pomodoro />        </div>
       </div>
     </div>
   )

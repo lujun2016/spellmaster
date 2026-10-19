@@ -13,6 +13,7 @@ import { INTERVALS_MS, MAX_STAGE } from "./srs"
 
 /** StudySession.kind → 中文名（统计页的模块分布用） */
 export const SESSION_KIND_LABEL: Record<string, string> = {
+  focus: "专注",
   vocab: "词汇复习",
   spelling: "拼写听写",
   listening: "听力精听",

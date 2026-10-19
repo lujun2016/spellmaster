@@ -7,7 +7,17 @@ import { createDrill, getDrill, saveDictation, wrongWordsFrom, type DrillSource 
 import { addNotebookItem, bumpDailyStat } from "@/lib/cet6/service"
 import { synthesizeSpeech } from "@/lib/cet6/tts"
 import { db } from "@/lib/cet6/db"
-import { getVoaItem, runVoaFetch } from "@/lib/cet6/voa"
+import { getVoaItem, markVoaListened, runVoaFetch } from "@/lib/cet6/voa"
+
+/**
+ * VOA「已听过」：播放器真正开始播放时由客户端调用。
+ * 之前挂在音频接口上，浏览器缓存命中时接口不会被调用，所以前几条听不标记。
+ */
+export async function markVoaListenedAction(id: string) {
+  await markVoaListened(id)
+  revalidatePath("/cet6/listening")
+  return { ok: true }
+}
 
 export async function createDrillAction(formData: FormData) {
   const source = (formData.get("source") as DrillSource) ?? "真题例句"

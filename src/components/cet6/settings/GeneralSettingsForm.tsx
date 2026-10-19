@@ -13,6 +13,8 @@ const inputCls = "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm ou
  */
 export function GeneralSettingsForm({
   examDate,
+  regStartDate,
+  regEndDate,
   dailyNewWords,
   dailyMaxReviews,
   autoPlan,
@@ -22,6 +24,8 @@ export function GeneralSettingsForm({
   daysLeft,
 }: {
   examDate: string
+  regStartDate: string
+  regEndDate: string
   dailyNewWords: number
   dailyMaxReviews: number
   autoPlan: boolean
@@ -32,6 +36,8 @@ export function GeneralSettingsForm({
 }) {
   const [form, setForm] = useState({
     examDate,
+    regStartDate,
+    regEndDate,
     dailyNewWords: String(dailyNewWords),
     dailyMaxReviews: String(dailyMaxReviews),
     autoPlan,
@@ -43,6 +49,8 @@ export function GeneralSettingsForm({
     startTransition(async () => {
       const res = await saveSettingsAction({
         examDate: form.examDate,
+        regStartDate: form.regStartDate,
+        regEndDate: form.regEndDate,
         dailyNewWords: form.dailyNewWords,
         dailyMaxReviews: form.dailyMaxReviews,
         autoPlan: form.autoPlan ? "1" : "0",
@@ -68,6 +76,28 @@ export function GeneralSettingsForm({
           <span className="mt-1 block text-[11px] text-slate-400">
             {daysLeft >= 0 ? `距今 ${daysLeft} 天` : `已过去 ${-daysLeft} 天，记得改成下一次考试`}
           </span>
+        </label>
+
+        <label className="text-xs text-slate-500">
+          报名开始日
+          <input
+            type="date"
+            value={form.regStartDate}
+            onChange={(e) => setForm({ ...form, regStartDate: e.target.value })}
+            className={`mt-1 ${inputCls}`}
+          />
+          <span className="mt-1 block text-[11px] text-slate-400">留空则不显示报名倒计时</span>
+        </label>
+
+        <label className="text-xs text-slate-500">
+          报名截止日
+          <input
+            type="date"
+            value={form.regEndDate}
+            onChange={(e) => setForm({ ...form, regEndDate: e.target.value })}
+            className={`mt-1 ${inputCls}`}
+          />
+          <span className="mt-1 block text-[11px] text-slate-400">过了这天首页不再显示报名倒计时</span>
         </label>
 
         <label className="text-xs text-slate-500">

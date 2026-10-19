@@ -7,8 +7,8 @@
  *   1. 首选本机中转 /api/cet6/voa/audio?id=… —— 服务端用带代理的 curl 把源站真人 MP3
  *      拉到 .cet6-audio/voa/ 再发过来。浏览器自己连不上 voa-audio.voanews.eu（代理是显式的，没 TUN）。
  *   2. 中转失败就退回源站直链试一次（万一浏览器配了全局代理就能通）。
- *   3. 两条都不行：不再假装有音频，提示「抓取需要梯子」，并给出「逐句 TTS 播放」兜底
- *      （用已有的 /api/cet6/tts 合成，免费且离线可用）。
+ *   3. 两条都不行：不再假装有音频，提示「抓取需要梯子」，并给出「逐句朗读」兜底
+ *      不再用 TTS 兜底（会与真人音频同时响）。
  *
  * 逐句原文默认藏起来：先盲听，再点「显示原文」对照。
  * 我们没有逐句时间戳，所以不做「点某句跳到音频某处」这种假功能。
@@ -16,7 +16,8 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react"
 import { finishVoaStudyAction } from "@/app/cet6/listening/actions"
 import { createNotebookItemAction } from "@/app/cet6/notebook/actions"
-import { playUrl, speak } from "@/lib/cet6/audio"
+import { speak } from "@/lib/cet6/audio"
+import { markVoaListenedAction } from "@/app/cet6/listening/actions"
 import type { ArticleVocab } from "@/lib/cet6/json"
 
 export type VoaPlayerItem = {
@@ -38,14 +39,13 @@ export function VoaPlayer({ item }: { item: VoaPlayerItem }) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   // 进页面时开始计时（渲染期间不能读时钟，所以放到 effect 里）
   const startedAt = useRef<number | null>(null)
+  const markCalled = useRef(false)
 
   const [rate, setRate] = useState(1)
   const [showText, setShowText] = useState(false)
   const [srcMode, setSrcMode] = useState<"relay" | "direct" | "down">("relay")
   const [audioNote, setAudioNote] = useState<string | null>(null)
   const [saved, setSaved] = useState<Set<string>>(new Set())
-  const [ttsPlaying, setTtsPlaying] = useState<number | null>(null)
-  const [ttsBusy, setTtsBusy] = useState(false)
   const [studyMsg, setStudyMsg] = useState<string | null>(null)
   const [pending, start] = useTransition()
 
@@ -54,7 +54,8 @@ export function VoaPlayer({ item }: { item: VoaPlayerItem }) {
   }, [])
 
   const src = useMemo(() => {
-    if (item.audioKind === "none") return null
+    // 只播真人音频：TTS 兜底已移除（会与真人音频同时响），没有 MP3 就明确提示不可用
+    if (item.audioKind !== "mp3") return null
     if (srcMode === "relay") return `/api/cet6/voa/audio?id=${encodeURIComponent(item.id)}`
     if (srcMode === "direct" && /^https?:\/\//i.test(item.audioUrl)) return item.audioUrl
     return null
@@ -74,42 +75,7 @@ export function VoaPlayer({ item }: { item: VoaPlayerItem }) {
       return
     }
     setSrcMode("down")
-    setAudioNote("音频放不了：本机中转和源站直链都没通。请确认代理已开启（默认 http://127.0.0.1:7892），或者用下面的「逐句 TTS 播放」。")
-  }
-
-  /** 没有原始音频时的兜底：逐句调免费的百度 TTS 合成再播 */
-  async function playSentencesFrom(startIndex = 0) {
-    if (ttsBusy) return
-    setTtsBusy(true)
-    setAudioNote(null)
-    try {
-      for (let i = startIndex; i < item.sentences.length; i++) {
-        const text = item.sentences[i]
-        setTtsPlaying(i)
-        try {
-          const res = await fetch(`/api/cet6/tts?text=${encodeURIComponent(text.slice(0, 700))}&rate=${rate}`)
-          if (!res.ok) throw new Error(String(res.status))
-          const data = (await res.json()) as { url?: string }
-          if (!data.url) throw new Error("no url")
-          await playUrl(data.url)
-        } catch {
-          // 合成不通就退回浏览器朗读，至少别让用户卡住
-          const synth = window.speechSynthesis
-          if (!synth) break
-          await new Promise<void>((resolve) => {
-            const u = new SpeechSynthesisUtterance(text)
-            u.lang = "en-US"
-            u.rate = rate
-            u.onend = () => resolve()
-            u.onerror = () => resolve()
-            synth.speak(u)
-          })
-        }
-      }
-    } finally {
-      setTtsPlaying(null)
-      setTtsBusy(false)
-    }
+    setAudioNote("音频放不了：本机中转和源站直链都没通。请确认代理已开启（默认 http://127.0.0.1:7892）后刷新重试。")
   }
 
   async function saveVocab(v: ArticleVocab) {
@@ -181,6 +147,14 @@ export function VoaPlayer({ item }: { item: VoaPlayerItem }) {
               preload="none"
               className="w-full"
               onError={handleAudioError}
+              // 真正开始播放才算"听过"（写库 + 刷新列表，已听条目会沉到底部）
+              onPlay={() => {
+                window.speechSynthesis?.cancel()
+                if (!markCalled.current) {
+                  markCalled.current = true
+                  void markVoaListenedAction(item.id)
+                }
+              }}
               onLoadedMetadata={() => {
                 setAudioNote(null)
                 if (audioRef.current) audioRef.current.playbackRate = rate
@@ -188,7 +162,7 @@ export function VoaPlayer({ item }: { item: VoaPlayerItem }) {
             />
           ) : (
             <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
-              这条没有可用的原始音频。可以用下面的「逐句 TTS 播放」按句子听（免费合成，第一遍稍慢）。
+              这条没有可用的真人音频（源站未提供 MP3），暂时无法播放。
             </p>
           )}
 
@@ -207,14 +181,6 @@ export function VoaPlayer({ item }: { item: VoaPlayerItem }) {
               </button>
             ))}
             <button
-              onClick={() => void playSentencesFrom(0)}
-              disabled={ttsBusy || !item.sentences.length}
-              className="rounded border border-slate-200 px-2 py-1 hover:bg-slate-50 disabled:opacity-50"
-              title="用免费 TTS 逐句合成播放"
-            >
-              {ttsBusy ? `逐句 TTS 播放中…（第 ${(ttsPlaying ?? 0) + 1} 句）` : "逐句 TTS 播放"}
-            </button>
-            <button
               onClick={finishStudy}
               disabled={pending}
               className="rounded-lg bg-indigo-600 px-3 py-1.5 font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
@@ -227,7 +193,7 @@ export function VoaPlayer({ item }: { item: VoaPlayerItem }) {
           {audioNote && <p className="mt-2 text-[11px] text-amber-600">{audioNote}</p>}
           <p className="mt-2 text-[11px] text-slate-400">
             拖动进度条可以直接跳转（本地缓存支持 Range）。没有逐句时间戳，所以不提供「点某句跳过去」——
-            需要逐句反复听时用「逐句 TTS 播放」。
+            需要反复听某段时拖动进度条回退即可。
           </p>
         </div>
       </section>
@@ -251,7 +217,6 @@ export function VoaPlayer({ item }: { item: VoaPlayerItem }) {
               <li key={i} className="flex items-start gap-2 rounded-lg bg-slate-50 px-3 py-2">
                 <span className="mt-0.5 w-7 shrink-0 text-right text-[11px] text-slate-400">{i + 1}</span>
                 <span className="min-w-0 flex-1 text-sm leading-relaxed text-slate-800">
-                  {ttsPlaying === i ? <span className="mr-1 text-indigo-500">▶</span> : null}
                   {s}
                 </span>
                 <button

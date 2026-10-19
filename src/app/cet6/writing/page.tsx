@@ -1,6 +1,8 @@
 import Link from "next/link"
+import { GenerateEssayButton } from "@/components/cet6/writing/GenerateEssayButton"
 import { TemplateCard } from "@/components/cet6/writing/TemplateCard"
 import { getWritingOverview, listTemplates } from "@/lib/cet6/writing"
+import { getTodayWriting, listWritingHistory, type TopicType } from "@/lib/cet6/writing-gen"
 
 export const dynamic = "force-dynamic"
 
@@ -9,7 +11,12 @@ export const dynamic = "force-dynamic"
  * 展示只是入口，「开始挖空」才是主路径——所以每张卡片的按钮比正文更显眼。
  */
 export default async function WritingPage() {
-  const [{ sections, total, starredCount }, overview] = await Promise.all([listTemplates(), getWritingOverview()])
+  const [{ sections, total, starredCount }, overview, today, history] = await Promise.all([
+    listTemplates(),
+    getWritingOverview(),
+    getTodayWriting(),
+    listWritingHistory(20),
+  ])
 
   return (
     <div className="space-y-5">
@@ -26,6 +33,80 @@ export default async function WritingPage() {
           每提交一次就换一组空，同一个模板多练几轮能把整篇覆盖完。
         </p>
       </div>
+
+      {/* 每日范文生成 */}
+      <section className="rounded-xl border border-slate-200 bg-white p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">今日范文</h2>
+            <p className="mt-0.5 text-xs text-slate-400">
+              按题型自动套骨架：有配大模型就用 AI 写新范文，没配就回退到库内真题范文（页面会标明来源）
+            </p>
+          </div>
+          <GenerateEssayButton hasToday={Boolean(today)} />
+        </div>
+
+        {today ? (
+          <div className="mt-4 space-y-4">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="rounded-full bg-indigo-50 px-2 py-0.5 font-medium text-indigo-700">{today.topicType}</span>
+              <span className={today.source === "llm" ? "text-emerald-600" : "text-amber-600"}>
+                {today.source === "llm" ? "AI 生成" : "库内真题范文"}
+              </span>
+              {today.refSlug && <span className="text-slate-400">出自 {today.refSlug}</span>}
+            </div>
+
+            <div>
+              <div className="mb-1 text-xs font-medium text-slate-400">题目</div>
+              <p className="text-sm leading-relaxed text-slate-700">{today.prompt}</p>
+            </div>
+
+            <div>
+              <div className="mb-1 text-xs font-medium text-slate-400">范文</div>
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{today.essay}</p>
+            </div>
+
+            <div className="rounded-lg bg-amber-50/60 p-4">
+              <div className="mb-2 text-xs font-medium text-amber-900">
+                挖空骨架 —— 每空旁标了这句话在回应题目的哪个部分
+              </div>
+              <ol className="space-y-2">
+                {today.skeleton.map((seg, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <span className="mt-0.5 w-24 shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-center text-[11px] font-medium text-amber-900">
+                      {seg.label}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm text-slate-800">{seg.en}</p>
+                      <p className="text-[11px] text-slate-500">→ {seg.hint}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        ) : (
+          <p className="mt-3 text-sm text-slate-400">
+            今天还没有范文。点右上角「生成今日范文」—— 没配大模型 key 也能用（回退到库内真题范文）。
+          </p>
+        )}
+
+        {history.length > 0 && (
+          <div className="mt-5 border-t border-slate-100 pt-3">
+            <div className="mb-2 text-xs font-medium text-slate-400">历史范文</div>
+            <ul className="grid gap-1 sm:grid-cols-2">
+              {history.map((h) => (
+                <li key={h.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-1.5 text-xs">
+                  <span className="text-slate-700">{h.date} · {h.topicType}</span>
+                  <span className={h.source === "llm" ? "text-emerald-600" : "text-amber-600"}>
+                    {h.source === "llm" ? "AI" : "库内"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
 
       {sections.map((section) => (
         <section key={section.category} className="space-y-2">

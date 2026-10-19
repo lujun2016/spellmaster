@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { BackToTop } from "@/components/cet6/BackToTop"
+import { PomodoroDock } from "@/components/cet6/PomodoroDock"
 import { Cet6Nav } from "@/components/cet6/Cet6Nav"
 import { getDashboardStats } from "@/lib/cet6/service"
 
@@ -20,23 +21,23 @@ export default async function Cet6Layout({ children }: { children: React.ReactNo
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b border-indigo-800 bg-gradient-to-r from-indigo-700 to-indigo-600 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <Link href="/cet6" className="flex items-baseline gap-2">
-            <span className="text-lg font-semibold text-slate-900">六级复习台</span>
-            <span className="text-xs text-slate-400">CET-6</span>
+            <span className="text-lg font-semibold text-white">六级复习台</span>
+            <span className="text-xs text-indigo-200">CET-6</span>
           </Link>
           <div className="flex items-center gap-3 text-sm">
-            <span className="hidden sm:inline text-slate-500">
-              待复习 <b className="text-slate-900">{stats.totalDue}</b>
+            <span className="hidden sm:inline text-indigo-100">
+              待复习 <b className="text-white">{stats.totalDue}</b>
             </span>
-            <span className="hidden sm:inline text-slate-500">
-              连续 <b className="text-slate-900">{stats.streak}</b> 天
+            <span className="hidden sm:inline text-indigo-100">
+              连续 <b className="text-white">{stats.streak}</b> 天
             </span>
             <span
               className={[
                 "rounded-full px-3 py-1 text-xs font-medium",
-                urgent ? "bg-rose-50 text-rose-700" : "bg-indigo-50 text-indigo-700",
+                urgent ? "bg-rose-500/90 text-white" : "bg-white/15 text-white",
               ].join(" ")}
             >
               距考试 {stats.daysLeft} 天
@@ -52,6 +53,7 @@ export default async function Cet6Layout({ children }: { children: React.ReactNo
         <main className="min-w-0 flex-1">{children}</main>
       </div>
       <BackToTop />
+      <PomodoroDock />
     </div>
   )
 }

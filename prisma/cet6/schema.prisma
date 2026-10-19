@@ -214,6 +214,24 @@ model DailyArticle {
   @@index([date])
 }
 
+// ==================== 写作范文生成 ====================
+
+/// 每日范文：点「生成今日范文」产生一篇。
+/// 有 LLM key 就按题型写新范文；没有就用库里某套真题的官方范文 + 对应模板骨架。
+model WritingGen {
+  id        String    @id @default(cuid())
+  date      String    @unique // YYYY-MM-DD，一天一篇
+  topicType String // 议论文-观点对比 | 议论文-现象分析 | 图表 | 应用文
+  prompt    String // 完整作文题目（Directions）
+  essay     String // 范文正文
+  skeleton  String    @default("[]") // [{label, en, hint}] 挖空骨架
+  source    String    @default("bank") // llm | bank
+  refId     String? // 回退库内范文时关联的 Paper.id
+  createdAt DateTime  @default(now())
+
+  @@index([date])
+}
+
 // ==================== 每日听力素材 ====================
 
 /// 每日听力：来自 BBC 6 Minute English / VOA Learning English 这类

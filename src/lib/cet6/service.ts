@@ -47,6 +47,10 @@ export type Settings = {
   dailyMaxReviews: number
   /** 到期欠账超过这个数就进"清账模式"：暂停新词、把欠账摊到几天里消化 */
   backlogLimit: number
+  /** 报名开始日（YYYY-MM-DD，空串=没设置） */
+  regStartDate: string
+  /** 报名截止日（YYYY-MM-DD，空串=没设置） */
+  regEndDate: string
   autoPlan: boolean
   ttsVoice: string
   ttsRate: number
@@ -62,6 +66,8 @@ export async function getSettings(): Promise<Settings> {
     dailyNewWords: Number(map.dailyNewWords ?? 40),
     dailyMaxReviews: Number(map.dailyMaxReviews ?? 150),
     backlogLimit: Number(map.backlogLimit ?? 120),
+    regStartDate: map.regStartDate || "",
+    regEndDate: map.regEndDate || "",
     autoPlan: (map.autoPlan ?? "1") === "1",
     ttsVoice: map.ttsVoice || "en-US",
     ttsRate: Number(map.ttsRate ?? 1),

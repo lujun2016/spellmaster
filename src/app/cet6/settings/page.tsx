@@ -72,6 +72,8 @@ export default async function SettingsPage() {
 
       <GeneralSettingsForm
         examDate={settings.examDate}
+        regStartDate={settings.regStartDate}
+        regEndDate={settings.regEndDate}
         dailyNewWords={settings.dailyNewWords}
         dailyMaxReviews={settings.dailyMaxReviews}
         autoPlan={settings.autoPlan}

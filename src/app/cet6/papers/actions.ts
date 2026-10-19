@@ -46,6 +46,21 @@ export async function submitSectionAction(payload: SubmitSectionPayload) {
     minutes: payload.minutes,
   })
 
+  // 错题自动归档：提交即写入错题本（在服务端做，用户马上离开页面也不会漏）。
+  // 只收有正确答案的题 —— OCR 那批缺答案的题不算错题，避免制造假错题。
+  const wrong = payload.detail.filter((d) => !d.right && d.answer)
+  for (const d of wrong.slice(0, 60)) {
+    await addNotebookItem({
+      kind: "mistake",
+      source: "真题",
+      title: `${payload.slug} 第 ${d.n} 题`,
+      content: `我的答案：${d.my || "（未作答）"} → 正确答案：${d.answer}`,
+      answer: d.answer,
+      myAnswer: d.my,
+      tags: payload.section,
+    })
+  }
+
   revalidatePath(`/cet6/papers/${payload.slug}`)
   revalidatePath("/cet6/papers")
   revalidatePath("/cet6")

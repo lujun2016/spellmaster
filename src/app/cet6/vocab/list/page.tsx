@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { ExportPanel } from "@/components/cet6/ExportPanel"
 import { SaveWordButton } from "@/components/cet6/SaveWordButton"
 import { db } from "@/lib/cet6/db"
 import { readTrans } from "@/lib/cet6/json"
@@ -108,6 +109,8 @@ export default async function WordListPage({
           ))}
         </div>
       </form>
+
+      <ExportPanel q={q} filter={filter} total={total} />
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
         <table className="w-full text-sm">

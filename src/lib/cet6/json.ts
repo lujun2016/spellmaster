@@ -22,6 +22,8 @@ export type AttemptDetail = { n: number; my: string; answer: string; right: bool
 export type TemplatePhrase = { en: string; cn: string }
 /** 真题听力音频里各篇的时间区间（用于分篇跳转/循环精听） */
 export type AudioPiece = { label: string; start: number; end: number }
+/** 写作范文的挖空骨架：每一步一句模板 + 作用说明 */
+export type Skeleton = { label: string; en: string; hint: string }
 
 /** 安全解析 JSON 字符串；失败或为空时返回兜底值 */
 export function parseJson<T>(raw: string | null | undefined, fallback: T): T {
@@ -56,3 +58,4 @@ export const readDrillAnswers = (s: string | null | undefined) => parseJson<Dril
 export const readAttemptDetail = (s: string | null | undefined) => parseJson<AttemptDetail[]>(s, [])
 export const readTemplatePhrases = (s: string | null | undefined) => parseJson<TemplatePhrase[]>(s, [])
 export const readAudioPieces = (s: string | null | undefined) => parseJson<AudioPiece[]>(s, [])
+export const readSkeleton = (s: string | null | undefined) => parseJson<Skeleton[]>(s, [])

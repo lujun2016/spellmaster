@@ -1,21 +1,12 @@
 "use server"
 
-/**
- * 写作模板模块的 server actions。
- * 客户端组件只调这里，不直接碰数据库（跟 vocab/actions.ts 的分工一致）。
- */
+/** 写作模块 server actions（挖空背诵 + 收藏 + 每日范文生成） */
 import { revalidatePath } from "next/cache"
 import { recordTemplatePractice, setTemplateStarred } from "@/lib/cet6/writing"
+import { generateTodayWriting } from "@/lib/cet6/writing-gen"
 
-/** 收藏 / 取消收藏。收藏置顶由列表页的排序负责，这里只落库并刷新受影响的路由 */
-export async function toggleTemplateStarAction(id: string, starred: boolean) {
-  await setTemplateStarred(id, starred)
-  revalidatePath("/cet6/writing")
-  revalidatePath(`/cet6/writing/${id}`)
-  return { ok: true, starred }
-}
-
-export type PracticePayload = {
+/** 交卷：落一次挖空背诵记录，并刷新统计与错题本 */
+export async function submitTemplatePracticeAction(payload: {
   templateId: string
   title: string
   category: string
@@ -23,20 +14,29 @@ export type PracticePayload = {
   correct: number
   wrong: number
   minutes: number
-  /** 没写出来的句式原文，用于复盘与进错题本 */
   missed: string[]
-}
-
-/**
- * 交卷：把这次挖空练习的得失写进 StudySession + DailyStat。
- * 返回 nextRound 让前端知道下一轮该挖哪组空（服务端算的练习次数）。
- */
-export async function submitTemplatePracticeAction(payload: PracticePayload) {
-  const result = await recordTemplatePractice(payload)
+}) {
+  await recordTemplatePractice(payload)
   revalidatePath("/cet6/writing")
-  revalidatePath(`/cet6/writing/${payload.templateId}`)
-  revalidatePath("/cet6")
   revalidatePath("/cet6/stats")
   revalidatePath("/cet6/notebook")
-  return { ok: true, nextRound: result.nextRound }
+  return { ok: true as const }
+}
+
+/** 收藏/取消收藏一个模板 */
+export async function toggleTemplateStarAction(id: string, starred: boolean) {
+  await setTemplateStarred(id, starred)
+  revalidatePath("/cet6/writing")
+  return { ok: true as const }
+}
+
+/** 生成（或重新生成）今日范文：有 key 用 AI 写，没 key 回退库内真题范文 */
+export async function generateWritingAction() {
+  try {
+    await generateTodayWriting()
+    revalidatePath("/cet6/writing")
+    return { ok: true as const }
+  } catch (e) {
+    return { ok: false as const, message: e instanceof Error ? e.message : String(e) }
+  }
 }

@@ -1,12 +1,136 @@
 @import "tailwindcss";
 
+/*
+ * 视觉方案 A（青蓝学习风）：只重映射 Tailwind 调色板的语义值 + 中文排版基线。
+ * 好处：全站立刻统一，页面代码不用改（页面里写的 slate-*/indigo-* 会自动取新值），
+ * 后续想换风格只动这一处。
+ */
 @theme inline {
   --color-background: #ffffff;
-  --color-foreground: #171717;
+  --color-foreground: #101828;
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "PingFang SC", "Microsoft YaHei", sans-serif;
+
 }
 
+/* Tailwind v4 的默认调色板定义在 theme 层里，@theme inline 覆盖不掉；
+   用未分层的 :root 覆盖，优先级更高（实测有效）。 */
+:root {
+/* 中性色：略暖一点的灰，长时间阅读不刺眼 */
+  --color-slate-50: #F1F6F5;
+  --color-slate-100: #E8EFED;
+  --color-slate-200: #DCE7E4;
+  --color-slate-300: #C2D4CF;
+  --color-slate-400: #7B8798;
+  --color-slate-500: #5F6B7C;
+  --color-slate-600: #475467;
+  --color-slate-700: #344054;
+  --color-slate-800: #1D2939;
+  --color-slate-900: #101828;
+
+  /* 主色：靛蓝（沿用现有的 indigo，保持视觉连续） */
+  --color-indigo-50: #F0FDFA;
+  --color-indigo-100: #CCFBF1;
+  --color-indigo-200: #99F6E4;
+  --color-indigo-400: #2DD4BF;
+  --color-indigo-500: #14B8A6;
+  --color-indigo-600: #0D9488;
+  --color-indigo-700: #0F766E;
+
+  /* 语义色：成功 / 警示 / 危险 */
+  --color-emerald-50: #ECFDF5;
+  --color-emerald-100: #D1FAE5;
+  --color-emerald-600: #059669;
+  --color-emerald-700: #047857;
+  --color-rose-50: #FEF2F2;
+  --color-rose-100: #FEE2E2;
+  --color-rose-600: #DC2626;
+  --color-rose-700: #B91C1C;
+}
+
+/* 中文排版基线：1.65 行高比 Tailwind 默认的 1.5 更适合方块字 */
 body {
-  background: var(--color-background);
-  color: var(--color-foreground);
+  background: var(--color-slate-50);
+  color: var(--color-slate-900);
+  font-family: var(--font-sans);
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* 标题收紧字距，中文大字号才不会显得散 */
+h1, h2, h3 {
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+}
+
+/* 键盘可访问性：所有可聚焦元素都有统一的 3px 光晕（用鼠标点不会出现） */
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.35);
+  border-radius: 10px;
+}
+
+/* 数字统一等宽字形：倒计时、百分比、得分不会跳位 */
+.tabular-nums, input[type="number"], .font-mono {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==================== A+ 视觉强化 ====================
+ * 目标：一眼能看出变化，但不喧宾夺主。
+ * 1) 页面背景加深 → 白卡片有层次
+ * 2) 常用字号整体上浮一档（中文 14px 偏小，15px 起读着更松）
+ * 3) 所有卡片统一圆角 14px + 柔和投影（页面里卡片都是 rounded-xl + border）
+ */
+body {
+  background: var(--color-slate-50);
+  font-size: 15px;
+}
+
+/* 字号阶梯：未分层覆盖，能压过 Tailwind 的 utilities */
+.text-xs   { font-size: 12.5px; line-height: 1.55; }
+.text-sm   { font-size: 14.5px; line-height: 1.65; }
+.text-base { font-size: 16px;   line-height: 1.7; }
+.text-lg   { font-size: 18.5px; line-height: 1.55; }
+.text-xl   { font-size: 22px;   line-height: 1.45; }
+.text-2xl  { font-size: 27px;   line-height: 1.35; }
+.text-3xl  { font-size: 31px;   line-height: 1.3; }
+.text-4xl  { font-size: 38px;   line-height: 1.2; }
+
+/* 卡片：统一浮起（页面里的卡片都是 rounded-xl border bg-white 组合） */
+.rounded-xl.border {
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 20px -10px rgba(16, 24, 40, 0.18);
+  transition: box-shadow 0.18s ease;
+}
+.rounded-xl.border:hover {
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 10px 24px -10px rgba(16, 24, 40, 0.22);
+}
+.rounded-lg { border-radius: 10px; }
+
+/* 主按钮更"实"一点：加一点点浮起 */
+.bg-indigo-600 {
+  box-shadow: 0 1px 2px rgba(13, 148, 136, 0.28);
+}
+.bg-indigo-600:hover {
+  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.32);
+}
+
+/* 番茄钟到点：抖动 + 爆炸 */
+@keyframes cet6-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(2px); }
+}
+@keyframes cet6-burst {
+  0% { opacity: 0; transform: rotate(var(--r, 0deg)) translateY(-6px) scale(0.5); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: rotate(var(--r, 0deg)) translateY(-46px) scale(1.4); }
+}
+@keyframes cet6-pop {
+  0% { opacity: 0; transform: scale(0.4); }
+  25% { opacity: 1; transform: scale(1.15); }
+  70% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.35); }
 }
