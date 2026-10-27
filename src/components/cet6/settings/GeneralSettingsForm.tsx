@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { NeuKnob } from "@/components/cet6/NeuKnob"
+import { NeuToggle } from "@/components/cet6/NeuToggle"
 import { saveSettingsAction } from "@/app/cet6/settings/actions"
 
 const inputCls = "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400"
@@ -100,18 +102,21 @@ export function GeneralSettingsForm({
           <span className="mt-1 block text-[11px] text-slate-400">过了这天首页不再显示报名倒计时</span>
         </label>
 
-        <label className="text-xs text-slate-500">
+        <div className="text-xs text-slate-500">
           每日新词量（设置值）
-          <input
-            type="number"
-            min={0}
-            max={200}
-            value={form.dailyNewWords}
-            onChange={(e) => setForm({ ...form, dailyNewWords: e.target.value })}
-            className={`mt-1 ${inputCls}`}
-          />
+          <div className="mt-2 flex items-center justify-center rounded-xl bg-slate-50/60 py-3">
+            <NeuKnob
+              value={Number(form.dailyNewWords) || 10}
+              min={10}
+              max={200}
+              step={5}
+              unit="个/天"
+              label="上下拖动 / 滚轮 / 方向键，按 5 吸附"
+              onChange={(v) => setForm({ ...form, dailyNewWords: String(v) })}
+            />
+          </div>
           <span className="mt-1 block text-[11px] text-slate-400">自动规划打开时，这个值是下限</span>
-        </label>
+        </div>
 
         <label className="text-xs text-slate-500">
           每日复习上限
@@ -130,14 +135,10 @@ export function GeneralSettingsForm({
 
         <div className="text-xs text-slate-500">
           自动规划每日新词
-          <label className="mt-1 flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2">
-            <input
-              type="checkbox"
-              checked={form.autoPlan}
-              onChange={(e) => setForm({ ...form, autoPlan: e.target.checked })}
-            />
+          <div className="mt-2 flex items-center gap-3">
+            <NeuToggle checked={form.autoPlan} onChange={(v) => setForm({ ...form, autoPlan: v })} />
             <span className="text-sm text-slate-700">{form.autoPlan ? "已打开" : "已关闭"}</span>
-          </label>
+          </div>
           <span className="mt-1 block text-[11px] text-slate-400">
             打开后按「剩余词数 ÷ 剩余天数」自动算，并与上面的设置值取较大者
           </span>

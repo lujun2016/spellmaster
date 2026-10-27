@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { MechanicalNumber } from "@/components/cet6/MechanicalNumber"
 import { Pomodoro } from "@/components/cet6/Pomodoro"
 import { daysUntil, effectiveDailyNew, getDashboardStats, getSettings, localDateKey } from "@/lib/cet6/service"
 
@@ -71,11 +72,27 @@ function Heatmap({ recent }: { recent: Array<{ date: string; minutes: number }> 
   )
 }
 
-function Stat({ label, value, hint }: { label: string; value: React.ReactNode; hint?: string }) {
+function Stat({
+  label,
+  value,
+  num,
+  suffix,
+  hint,
+}: {
+  label: string
+  value?: React.ReactNode
+  /** 传了数字就用机械滚轮显示（每一位独立滚动） */
+  num?: number
+  suffix?: string
+  hint?: string
+}) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
       <div className="text-xs text-slate-500">{label}</div>
-      <div className="mt-1 text-xl font-semibold tabular-nums text-slate-900">{value}</div>
+      <div className="mt-1 flex items-baseline gap-1 text-xl font-semibold text-slate-900">
+        {num !== undefined ? <MechanicalNumber value={num} /> : value}
+        {suffix && <span className="text-sm text-slate-500">{suffix}</span>}
+      </div>
       {hint && <div className="mt-0.5 text-[11px] text-slate-400">{hint}</div>}
     </div>
   )
@@ -161,10 +178,10 @@ export default async function Cet6Dashboard() {
       )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="今日复习" value={stats.todayReviews} hint={`正确 ${stats.todayCorrect} / 错误 ${stats.todayWrong}`} />
-        <Stat label="今日新学" value={stats.todayNew} hint={`每天目标 ${daily.value} 个`} />
-        <Stat label="今日时长" value={`${stats.todayMinutes} 分`} hint={`${stats.todayPomodoros} 个番茄`} />
-        <Stat label="今日正确率" value={todayTotal ? `${todayAccuracy}%` : "—"} hint={`答题 ${todayTotal} 次`} />
+        <Stat label="今日复习" num={stats.todayReviews} hint={`正确 ${stats.todayCorrect} / 错误 ${stats.todayWrong}`} />
+        <Stat label="今日新学" num={stats.todayNew} hint={`每天目标 ${daily.value} 个`} />
+        <Stat label="今日时长" num={stats.todayMinutes} suffix="分" hint={`${stats.todayPomodoros} 个番茄`} />
+        <Stat label="今日正确率" num={todayTotal ? todayAccuracy : 0} suffix="%" hint={`答题 ${todayTotal} 次`} />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-3">

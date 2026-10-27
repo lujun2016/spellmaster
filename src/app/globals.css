@@ -134,3 +134,57 @@ body {
   70% { opacity: 1; transform: scale(1); }
   100% { opacity: 0; transform: scale(1.35); }
 }
+
+/* ==================== 新拟物材质层 ====================
+ * 同色底 + 一亮一暗两层柔影：凸起(raised)/凹陷(inset)。
+ * 主色仍用已确认的青蓝(teal)，只把「材质感」搬进来。
+ */
+:root {
+  --neu-hi: rgba(255, 255, 255, 0.95);
+  --neu-lo: rgba(23, 42, 58, 0.10);
+}
+
+/* 实体键帽：菜单项/小按钮 */
+.neu-key {
+  background: var(--color-slate-50);
+  border-radius: 14px;
+  box-shadow: -3px -3px 7px var(--neu-hi), 3px 3px 8px var(--neu-lo);
+  transition: box-shadow 0.18s ease, transform 0.18s ease, color 0.18s ease;
+  will-change: transform;
+}
+.neu-key:hover {
+  transform: translateY(-1.5px);
+  box-shadow: -4px -4px 9px var(--neu-hi), 5px 5px 11px var(--neu-lo);
+}
+/* 按下：外阴影转内阴影并下沉；当前项保持按下态 */
+.neu-key:active,
+.neu-key[data-active="true"] {
+  transform: translateY(1px);
+  box-shadow: inset -2px -2px 6px var(--neu-hi), inset 3px 3px 8px var(--neu-lo);
+}
+/* 指示灯：当前项亮青蓝 */
+.neu-led {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--color-indigo-500);
+  opacity: 0;
+  transition: opacity 0.2s ease, box-shadow 0.2s ease;
+}
+.neu-key[data-active="true"] .neu-led {
+  opacity: 1;
+  box-shadow: 0 0 6px var(--color-indigo-500), 0 0 12px rgba(20, 184, 166, 0.55);
+}
+
+/* 通用凸起/凹陷 */
+.neu-raised { box-shadow: -4px -4px 10px var(--neu-hi), 4px 4px 10px var(--neu-lo); }
+.neu-inset { box-shadow: inset -3px -3px 8px var(--neu-hi), inset 4px 4px 9px var(--neu-lo); }
+
+/* 键盘可访问性：新拟物件也要有焦点提示 */
+.neu-key:focus-visible,
+.neu-toggle:focus-visible,
+.neu-knob:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.35), -3px -3px 7px var(--neu-hi), 3px 3px 8px var(--neu-lo);
+}

@@ -41,13 +41,13 @@ export function Cet6Nav() {
               <Link
                 key={item.href}
                 href={item.href}
+                data-active={isActive}
                 className={[
-                  "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
-                  isActive
-                    ? "bg-indigo-50 font-medium text-indigo-700"
-                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                  "neu-key flex shrink-0 items-center gap-2 px-3 py-2 text-sm",
+                  isActive ? "font-medium text-teal-700" : "text-slate-600 hover:text-slate-900",
                 ].join(" ")}
               >
+                <span className="neu-led" aria-hidden />
                 <span className="w-4 text-center text-xs opacity-70">{item.icon}</span>
                 {item.label}
               </Link>
